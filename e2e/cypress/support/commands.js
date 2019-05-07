@@ -75,3 +75,23 @@ Cypress.Commands.add("cleanupUsers", (id_token) => {
     }
   })
 })
+
+Cypress.Commands.add("cleanupProjects", (id_token) => {
+  cy.request({
+    auth: { bearer: id_token },
+    method: 'GET',
+    url: `/apis/iam/v2beta/projects`,
+    failOnStatusCode: false
+  }).then((resp) => {
+    for (let project of resp.body.projects) {
+      if (project.id.startsWith('cypress')) {
+        cy.request({
+          auth: { bearer: id_token },
+          method: 'DELETE',
+          url: `/apis/iam/v2beta/projects/${project.id}`,
+          failOnStatusCode: false
+        })
+      }
+    }
+  })
+})
