@@ -1,41 +1,39 @@
 describe('global projects filter', () => {
+  const nonAdminUsername = "cypressTestUserNonAdmin"
+  const proj1  = "cypress-project-1"
+  const proj2  = "cypress-project-2"
+  const pol_id = "cypress-policy"
+
   before(() => {
-    cy.login('/').then(() => {
+    cy.adminLogin('/').then(() => {
       let admin = JSON.parse(localStorage.getItem('chef-automate-user'))
-      cy.request({
-          auth: { bearer: admin.id_token },
-          method: 'POST',
-          url: `/apis/iam/v2beta/projects`,
-          failOnStatusCode: false,
-          body: {
-            id: "cypress-project-1",
-            name: "Cypress Project One"
-          }
-      }).then((response) => {
-        // if user already exists, move on
-        expect([200, 409]).to.include(response.status)
-        })
-      cy.request({
-          auth: { bearer: admin.id_token },
-          method: 'POST',
-          url: `/apis/iam/v2beta/projects`,
-          failOnStatusCode: false,
-          body: {
-            id: "cypress-project-2",
-            name: "Cypress Project Two"
-          }
-      }).then((response) => {
-        expect([200, 409]).to.include(response.status)
-      })
+
+      cy.createProject(admin.id_token, proj1)
+      cy.createProject(admin.id_token, proj2)
+      cy.createUser(admin.id_token, nonAdminUsername)
+      cy.createPolicy(admin.id_token, "cypress-policy-id", nonAdminUsername, [proj1, proj2])
+      cy.logout()
     })
   })
 
   after(() => {
-    let admin = JSON.parse(localStorage.getItem('chef-automate-user'))
-    cy.cleanupProjects(admin.id_token)
-  }) 
+    cy.adminLogin('/').then(() => {
+      let admin = JSON.parse(localStorage.getItem('chef-automate-user'))
+      cy.cleanupProjects(admin.id_token)
+      cy.cleanupUsers(admin.id_token)
+      cy.request({
+        auth: { bearer: admin.id_token },
+        method: 'DELETE',
+        url: `/apis/iam/v2beta/policies/${pol_id}`,
+        failOnStatusCode: false
+      }).then((response) => {
+        expect([200, 404]).to.include(response.status)
+      })
+    })
+  })
 
-  it('shows allowed projects for selection', () => {
+  it('shows all projects for admin', () => {
+    cy.adminLogin('/')
     cy.visit('/settings')
     // hide modal unrelated to test flow
     cy.get('app-welcome-modal').invoke('hide')
@@ -46,12 +44,33 @@ describe('global projects filter', () => {
         if (version === 'v1') {
           cy.get('[data-cy=projects-filter-button]').click()
           
-          const allowedProjects = ['cypress-project-1', 'cypress-project-2', '(unassigned)'];
+          const allowedProjects = [proj1, proj2, '(unassigned)'];
           allowedProjects.forEach(project => {
             cy.get('[data-cy=projects-filter-dropdown]').contains(project)
           })
         }
       })
+    cy.logout()
+  })
+
+  it('shows allowed projects for non-admin', () => {
+    cy.login('/', nonAdminUsername)
+    cy.visit('/settings')
+    // hide modal unrelated to test flow
+    cy.get('app-welcome-modal').invoke('hide')
+
+    cy.get('chef-sidebar')
+      .should('have.attr', 'minor-version')
+      .then((version) => {
+        if (version === 'v1') {
+          cy.get('[data-cy=projects-filter-button]').click()
+
+          const allowedProjects = [proj1, proj2];
+          allowedProjects.forEach(project => {
+            cy.get('[data-cy=projects-filter-dropdown]').contains(project)
+          })
+        }
+      })
+    cy.logout()
   })
 })
-
