@@ -25,7 +25,6 @@ DEEP_UPGRADE_PATH="${OLD_MANIFEST_DIR}/${CURRENT_OLDEST_VERSION}.json"
 
 do_build() {
     do_build_default
-    sync_a1_migration_data
 }
 
 do_deploy() {
@@ -38,7 +37,7 @@ do_deploy() {
 
     # Original name of migrate-from-v1 was upgrade-from-v1
     #shellcheck disable=SC2154
-    "${cli_bin}" upgrade-from-v1 "$test_config_path" \
+    "${cli_bin}" deploy "$test_config_path" \
         --hartifacts "$test_hartifacts_path" \
         --override-origin "$HAB_ORIGIN" \
         --upgrade-strategy "$test_upgrade_strategy" \
