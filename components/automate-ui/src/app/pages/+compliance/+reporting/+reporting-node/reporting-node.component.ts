@@ -24,6 +24,9 @@ export class ReportingNodeComponent implements OnInit, OnDestroy {
   reportLoading = false;
   RFC2822 = DateTime.RFC2822;
   returnParams: ReturnParams = {};
+  page = 1;
+  pageSize = 10;
+  totalReports = 0;
 
   openControls = {};
 
@@ -46,19 +49,25 @@ export class ReportingNodeComponent implements OnInit, OnDestroy {
     const reportQuery = this.reportQueryService.getReportQuery();
     reportQuery.filters = reportQuery.filters.concat([{type: {name: 'node_id'}, value: {id}}]);
 
-    this.statsService.getReports(reportQuery, {sort: 'latest_report.end_time', order: 'DESC'})
+    this.statsService.getReportsWithPages(reportQuery,
+      {sort: 'latest_report.end_time', order: 'DESC'}, this.page, this.pageSize)
     .pipe(takeUntil(this.isDestroyed))
-    .subscribe(reports => {
-      this.reports = reports;
-      const queryForReport = this.reportQueryService.getReportQueryForReport(reports[0]);
-      this.statsService.getSingleReport(reports[0].id, queryForReport)
+    .subscribe(reportCollection => {
+      this.totalReports = reportCollection.totalReports;
+      this.reports = reportCollection.reports;
+      const queryForReport = this.reportQueryService.getReportQueryForReport(this.reports[0]);
+      this.statsService.getSingleReport(this.reports[0].id, queryForReport)
         .pipe(takeUntil(this.isDestroyed))
         .subscribe(data => {
           this.reportLoading = false;
           this.layoutFacade.ShowPageLoading(false);
-          this.activeReport = Object.assign(reports[0], data);
+          this.activeReport = Object.assign(this.reports[0], data);
         });
     });
+  }
+
+  onPageChanged(event: number) {
+    this.page = event;
   }
 
   ngOnDestroy() {
