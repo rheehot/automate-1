@@ -89,13 +89,66 @@ Calculate report stats for performant and rich data aggregations.
 ---
 
 ## Reporting with extensive filtering and deep filtering
+Example of some filters used across most reporting apis
+```json
+{
+  "filters": [
+    {
+      "type": "start_time",
+      "values": [
+        "2019-01-26T00:00:00Z"
+      ]
+    },
+    {
+      "type": "end_time",
+      "values": [
+        "2019-02-05T23:59:59Z"
+      ]
+    },
+    {
+      "type": "profile_id",
+      "values": [
+        "f42d2f48c9acd48f52324d52ec575ca9028e405eb303f69cb34d79eb0e588b5c"
+      ]
+    },
+    {
+      "type": "control",
+      "values": [
+        "sshd-02"
+      ]
+    },
+    {
+      "type": "platform",
+      "values": [
+        "centos"
+      ]
+    },
+    {
+      "type": "environment",
+      "values": [
+        "DevSec Prod Zeta"
+      ]
+    }
+  ]
+}
+```
+
+Deep filtering allows us to see how our infra is doing with respect to the overall node, a specific profile, or a specific control
+ 
 
 ## The four states of a control / profile / node:
- * passed
+ * passed 
  * skipped
  * failed
  * waived
 
 ## Suggestions
+There are fields in each report that may be filtered upon 
+the suggestions api allows us to list close matches as we type for more efficient selection
+The reporting data is stored in ES in summary and also in detailed form.. currently the summary is only used for surface level suggestions
+
 
 ## ES Migrations
+the migration flow chart
+the interface driven approach to migrations (esMigratable interface)
+
