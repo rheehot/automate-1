@@ -11,11 +11,11 @@ Compliance in Automate helps customer manage security and compliance risk of:
 
 Automate ships with 399 compliance profiles, majority of them automatically converted from industry leading compliance benchmarks like **CIS** and **STIG**.
  * `Automate UI > Compliance > Profiles > Available tab` also called in the code as the *market* profiles
- * Once imported with the "Get" button, they can be used to trigger scans
+ * Once imported with the `Get` button, they can be used to trigger scans
 
 Chef has certified a lot of these profiles with **CIS**: https://www.cisecurity.org/partner/chef/
 
-The profiles are executed a Ruby based tool called Chef InSpec. The profile execution generates a report, which is then used by Automate for the Compliance reporting data.
+The profiles are executed a [Ruby](http://www.ruby-lang.org) based tool called **InSpec**. The profile execution generates a report, which is then used by Automate for the Compliance reporting data.
 InSpec is owned by Chef/Progress, with the source code being available in this public repository:
  - https://github.com/inspec/inspec
 
@@ -73,14 +73,14 @@ Example: InSpec generates a report of **100 MB** based on the profile being exec
 
 ## Ingestion
 
-3 indices
-* summary
-* report
-* profiles
+Stored in ElasticSearch in 3 index types:
 
-Normalize data, for dedup reasons and avoid unnecessary ingestion.
-Calculate stats for aggregations
+ * summary (e.g. `comp-7-r-2020.11.07`)
+ * report (e.g. `comp-7-s-2020.11.07`)
+ * profiles (e.g. `comp-3-profiles`)
 
+Used to normalize data, for deduplication reasons and to avoid unnecessary ingestion load.
+Calculate report stats for performant and rich data aggregations.
 
 ## Node manager
 
