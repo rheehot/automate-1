@@ -3,25 +3,27 @@
 ## Overview
 
 Compliance in Automate helps customer manage security and compliance risk of:
- * Cloud Accounts (AWS, Azure, GCP, Digital Ocean, etc)
  * Servers (Windows, Linux, etc)
+ * Cloud Accounts (AWS, Azure, GCP, Digital Ocean, etc)
  * Network devices
  * Containers
  * Anything else that has an API or CLI if a custom plugin is created. Not necessary security or compliance related. Used frequently for common IT automated testing because of it's versatility.
 
-Automate ships with 399 compliance profiles, majority of them automatically converted from industry leading compliance benchmarks like CIS and STIG.
+Automate ships with 399 compliance profiles, majority of them automatically converted from industry leading compliance benchmarks like **CIS** and **STIG**.
  * `Automate UI > Compliance > Profiles > Available tab` also called in the code as the *market* profiles
  * Once imported with the "Get" button, they can be used to trigger scans
 
-Chef has certified a lot of these profiles with CIS: https://www.cisecurity.org/partner/chef/
+Chef has certified a lot of these profiles with **CIS**: https://www.cisecurity.org/partner/chef/
 
 The profiles are executed a Ruby based tool called Chef InSpec. The profile execution generates a report, which is then used by Automate for the Compliance reporting data.
 InSpec is owned by Chef/Progress, with the source code being available in this public repository:
  - https://github.com/inspec/inspec
 
+InSpec uses a ruby gem called [train](https://github.com/inspec/train) to communicate with the targets.
+
 Starting with InSpec v4 (released in April 2019), packages of InSpec and Chef Infra require a Chef license acceptance. For commercial use, a paid subscription.
 
-Independent of Chef, **[CINC group](https://cinc.sh)** releases open source builds of *Chef Infra* and *Chef InSpec* at:
+Independent of Chef, **[CINC group](https://cinc.sh)** releases open source builds of *Chef Infra* and *Chef InSpec* at.
 
 ---
 
@@ -71,11 +73,28 @@ Example: InSpec generates a report of **100 MB** based on the profile being exec
 
 ## Ingestion
 
+3 indices
+* summary
+* report
+* profiles
+
+Normalize data, for dedup reasons and avoid unnecessary ingestion.
+Calculate stats for aggregations
+
+
 ## Node manager
 
 ## Scan jobs
 
+---
+
 ## Reporting with extensive filtering and deep filtering
+
+## The four states of a control / profile / node:
+ * passed
+ * skipped
+ * failed
+ * waived
 
 ## Suggestions
 
