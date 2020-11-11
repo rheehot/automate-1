@@ -69,7 +69,7 @@ Executed by Chef Infra client with attributes: profiles, inputs, report target.
 
 Provided over the years a stop gap, a place to quick fix things or make sure InSpec and Automate stay "friends".
 
-Example: InSpec generates a report of **100 MB** based on the profile being executed and the target node. Automate has a hard limit of **4 MB** inherited from GRPC. Audit cookbook takes the **100 MB** report, reduces profile metadata (if Automate already has it), truncates results, and send to Automate an acceptable report of **0.1 MB** :tada: :tada: :tada:
+Example: InSpec generates a report of **100 MB** based on the profile being executed and the target node. Automate has a hard limit of **4 MB** inherited from GRPC. Audit cookbook takes the **100 MB** report, reduces profile metadata (if Automate already has it), truncates results, and send to Automate an acceptable report of **1 MB** :tada: :tada: :tada:
 
 ## Ingestion
 
@@ -80,9 +80,9 @@ The compliance code responsible for processing the InSpec reports sent to Automa
 
 Data is stored in ElasticSearch in 3 index types:
 
- * Daily summary index (e.g. `comp-7-s-2020.11.07`)
- * Daily reports index (e.g. `comp-7-r-2020.11.07`)
- * Profiles metadata index (e.g. `comp-3-profiles`)
+ * Daily summary index (e.g. `comp-7-s-2020.11.07`), one for each day
+ * Daily reports index (e.g. `comp-7-r-2020.11.07`), one for each day
+ * Profiles metadata index (e.g. `comp-3-profiles`), just one
 
 ^ `comp` is the prefix for `compliance` data, 7 and 3 are the versions of these indices. These numbers increase with index migrations.
 
@@ -118,8 +118,10 @@ components/secrets-service
 ```
 
 These are two of the Automate pages where you can manually interact with the service:
-`Automate UI > Node Credentials > Create Credential`
-`Automate UI > Node Integrations > Create Integration`
+```
+Automate UI > Settings > Node Credentials > Create Credential
+Automate UI > Settings > Node Integrations > Create Integration
+```
 
 The data is stored in Postgresql symmetrically encrypted.
 
