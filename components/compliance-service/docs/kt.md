@@ -89,6 +89,31 @@ Calculate report stats for performant and rich data aggregations.
 ---
 
 ## Reporting with extensive filtering and deep filtering
+Surface level filters:
+- environment
+- organization
+- chef_server
+- chef_tags
+- policy_group
+- policy_name
+- status
+- node_name
+- platform
+- platform_with_version
+- role
+- recipe
+- inspec_version
+- ipaddress
+- node_id 
+- start_time 
+- end_time
+- job_id
+
+Nested filters:
+- control
+- control_tag
+- profile_id
+
 Example of some filters used across most reporting apis
 ```json
 {
@@ -141,14 +166,30 @@ Deep filtering allows us to see how our infra is doing with respect to the overa
  * skipped
  * failed
  * waived
-
+```$go
+func computeStatus(failed int32, passed int32, skipped int32, waived int32) string {
+	if failed > 0 {
+		return "failed"
+	} else if passed == 0 && skipped == 0 && waived > 0 {
+		return "waived"
+	} else if passed > 0 || skipped == 0 {
+		return "passed"
+	} else if passed == 0 && skipped > 0 {
+		return "skipped"
+	}
+	return "unknown"
+}
+``` 
+  
 ## Suggestions
-There are fields in each report that may be filtered upon 
+Reports contain certain fields that we use to filter on
 the suggestions api allows us to list close matches as we type for more efficient selection
-The reporting data is stored in ES in summary and also in detailed form.. currently the summary is only used for surface level suggestions
+The reporting data is stored in ES in summary and also in detailed form.. 
+Currently the summary is only used for surface level suggestions
 
 
 ## ES Migrations
-the migration flow chart
-the interface driven approach to migrations (esMigratable interface)
+* index versioning is separate for report indices and profiles indices which minimizes migrations 
+* the migration flow chart shows the process by which we migrate time series for maximum up time
+* the interface driven approach to migrations (esMigratable interface)
 
