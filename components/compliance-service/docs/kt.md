@@ -89,13 +89,106 @@ Calculate report stats for performant and rich data aggregations.
 ---
 
 ## Reporting with extensive filtering and deep filtering
+Surface level filters:
+- environment
+- organization
+- chef_server
+- chef_tags
+- policy_group
+- policy_name
+- status
+- node_name
+- platform
+- platform_with_version
+- role
+- recipe
+- inspec_version
+- ipaddress
+- node_id
+- start_time
+- end_time
+- job_id
+
+Nested filters:
+- control
+- control_tag
+- profile_id
+
+Example of some filters used across most reporting apis
+```json
+{
+  "filters": [
+    {
+      "type": "start_time",
+      "values": [
+        "2019-01-26T00:00:00Z"
+      ]
+    },
+    {
+      "type": "end_time",
+      "values": [
+        "2019-02-05T23:59:59Z"
+      ]
+    },
+    {
+      "type": "profile_id",
+      "values": [
+        "f42d2f48c9acd48f52324d52ec575ca9028e405eb303f69cb34d79eb0e588b5c"
+      ]
+    },
+    {
+      "type": "control",
+      "values": [
+        "sshd-02"
+      ]
+    },
+    {
+      "type": "platform",
+      "values": [
+        "centos"
+      ]
+    },
+    {
+      "type": "environment",
+      "values": [
+        "DevSec Prod Zeta"
+      ]
+    }
+  ]
+}
+```
+
+Deep filtering allows us to see how our infra is doing with respect to the overall node, a specific profile, or a specific control
+
 
 ## The four states of a control / profile / node:
  * passed
  * skipped
  * failed
  * waived
+```$go
+func computeStatus(failed int32, passed int32, skipped int32, waived int32) string {
+	if failed > 0 {
+		return "failed"
+	} else if passed == 0 && skipped == 0 && waived > 0 {
+		return "waived"
+	} else if passed > 0 || skipped == 0 {
+		return "passed"
+	} else if passed == 0 && skipped > 0 {
+		return "skipped"
+	}
+	return "unknown"
+}
+```
 
 ## Suggestions
+Reports contain certain fields that we use to filter on
+the suggestions api allows us to list close matches as we type for more efficient selection
+The reporting data is stored in ES in summary and also in detailed form..
+Currently the summary is only used for surface level suggestions
+
 
 ## ES Migrations
+* index versioning is separate for report indices and profiles indices which minimizes migrations
+* the migration flow chart shows the process by which we migrate time series for maximum up time
+* the interface driven approach to migrations (esMigratable interface)
