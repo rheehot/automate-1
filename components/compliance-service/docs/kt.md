@@ -89,9 +89,75 @@ Data is stored in ElasticSearch in 3 index types:
 Used to normalize data, for deduplication reasons and to avoid unnecessary ingestion load.
 Calculate report stats for performant and rich data aggregations.
 
-## Node manager
+## Compliance profiles
+
+These are the artifacts, the content that InSpec needs to execute in order to deliver a scan report.
+
+You can find the backend code for this functionality at:
+```
+components/compliance-service/api/profiles/server/pgserver.go
+components/compliance-service/dao/pgdb/jobs.go
+```
+
+The profile data is stored in Postgresql and the profile metadata is also cached in ElasticSearch in the `comp-*-profiles` index.
+
+You can interact with the service from this Automate page:
+`Automate UI > Compliance > Profiles`
+
+## Secrets service
+
+Is a service that deals with credentials of nodes or integrations. For example:
+ * SSH username & passwords or RSA private keys,
+ * WinRM username & passwords
+ * AWS ACCESS KEY ID & SECRET ACCESS KEY
+ * ServiceNow credentials
+
+The backend code for this service is located in:
+```
+components/secrets-service
+```
+
+These are two of the Automate pages where you can manually interact with the service:
+`Automate UI > Node Credentials > Create Credential`
+`Automate UI > Node Integrations > Create Integration`
+
+The data is stored in Postgresql symmetrically encrypted.
+
+
+## Node manager service
+
+The node manager keeps track of the nodes in Automate. Either manually added or synched from Chef Server or infrastructure clouds (AWS, Azure, GCP)
+
+The backend code for this service is located at:
+```
+components/nodemanager-service
+```
+
+You can interact with the service from this Automate page:
+`Automate UI > Compliance > Scan Jobs > Nodes Added tab > Add Nodes`
+
 
 ## Scan jobs
+
+These are two types of scan jobs:
+ * single run job
+ * multiple runs job, recurrent with or without end time limit
+
+You can find the backend code for this functionality at:
+```
+components/compliance-service/api/jobs/server/server.go
+components/compliance-service/dao/pgdb/jobs.go
+```
+
+The data is stored in Postgresql.
+
+You can interact with the service from this Automate page:
+`Automate UI > Compliance > Scan Jobs > Scan Jobs tab`
+
+## Last 24h API / UI improvements
+
+On November 11, 2020 an improvement has been merged in master to show in the UI by default Compliance data for the last 24 hours, relative to the time of the user.
+Before we were showing based on the current UTC date, regardless of the user's timezone.
 
 ---
 
