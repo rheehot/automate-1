@@ -73,11 +73,18 @@ Example: InSpec generates a report of **100 MB** based on the profile being exec
 
 ## Ingestion
 
-Stored in ElasticSearch in 3 index types:
+The compliance code responsible for processing the InSpec reports sent to Automate can be found at this location in the repository:
+```
+/components/compliance-service/ingest/
+```
 
- * summary (e.g. `comp-7-r-2020.11.07`)
- * report (e.g. `comp-7-s-2020.11.07`)
- * profiles (e.g. `comp-3-profiles`)
+Data is stored in ElasticSearch in 3 index types:
+
+ * Daily summary index (e.g. `comp-7-s-2020.11.07`)
+ * Daily reports index (e.g. `comp-7-r-2020.11.07`)
+ * Profiles metadata index (e.g. `comp-3-profiles`)
+
+^ `comp` is the prefix for `compliance` data, 7 and 3 are the versions of these indices. These numbers increase with index migrations.
 
 Used to normalize data, for deduplication reasons and to avoid unnecessary ingestion load.
 Calculate report stats for performant and rich data aggregations.
