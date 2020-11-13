@@ -157,7 +157,7 @@ export class OverviewTrendComponent implements OnChanges, OnDestroy  {
         return [
           moment.utc(this.domainX[0]).format(DateTime.CHEF_DATE_TIME),
           moment.utc(this.domainX[1]).format(DateTime.CHEF_DATE_TIME)
-        ].join(' - ') + '(UTC)';
+        ].join(' - ') + ' (UTC)';
       });
 
     this.axisXSelection.select('.domain')
