@@ -3,9 +3,9 @@ package esgateway
 import (
 	"encoding/base64"
 	"fmt"
+	"net"
+	"net/url"
 	"strings"
-
-	wrappers "github.com/golang/protobuf/ptypes/wrappers"
 
 	ac "github.com/chef/automate/api/config/shared"
 	w "github.com/chef/automate/api/config/shared/wrappers"
@@ -41,6 +41,7 @@ func DefaultConfigRequest() *ConfigRequest {
 
 	c.V1.Sys.Ngx.Main.WorkerProcesses = w.Int32(4)
 	c.V1.Sys.Ngx.Main.MaxFails = w.Int32(10)
+	// c.V1.Sys.Ngx.Main.Resolvers = getSystemResolvers()
 
 	c.V1.Sys.Ngx.Events.WorkerConnections = w.Int32(1024)
 
@@ -99,19 +100,20 @@ func (c *ConfigRequest) SetGlobalConfig(g *ac.GlobalConfig) {
 		if len(nodes) > 0 {
 			isSSL := false
 
-			endpoints := make([]*wrappers.StringValue, 0, len(nodes))
+			endpoints := make([]*ConfigRequest_V1_System_Endpoint, 0, len(nodes))
 			for _, n := range nodes {
 				endpoint, ssl := uriToEndpoint(n.GetValue())
-				endpoints = append(endpoints, w.String(endpoint))
+				endpoints = append(endpoints, endpoint)
 				isSSL = ssl
 			}
 			c.V1.Sys.External.SslUpstream = w.Bool(isSSL)
-			c.V1.Sys.External.Endpoints = endpoints
+			c.V1.Sys.External.ParsedEndpoints = endpoints
+
 			if isSSL {
 				if serverName := externalES.GetSsl().GetServerName().GetValue(); serverName != "" {
 					c.V1.Sys.External.ServerName = w.String(serverName)
 				} else {
-					endpoint := endpoints[0].GetValue()
+					endpoint := endpoints[0].Address.GetValue()
 					c.V1.Sys.External.ServerName = w.String(strings.Split(endpoint, ":")[0])
 				}
 			}
@@ -130,14 +132,41 @@ func (c *ConfigRequest) SetGlobalConfig(g *ac.GlobalConfig) {
 		c.V1.Sys.External.RootCert = g.GetV1().GetExternal().GetElasticsearch().GetSsl().GetRootCert()
 		c.V1.Sys.External.RootCertFile = g.GetV1().GetExternal().GetElasticsearch().GetSsl().GetRootCertFile()
 	}
-
 }
 
-func uriToEndpoint(uri string) (endpoint string, ssl bool) {
-	if strings.HasPrefix(uri, "http://") {
-		return strings.TrimPrefix(uri, "http://"), false
-	} else if strings.HasPrefix(uri, "https://") {
-		return strings.TrimPrefix(uri, "https://"), true
+func uriToEndpoint(uri string) (*ConfigRequest_V1_System_Endpoint, bool) {
+	ssl := false
+	ret := &ConfigRequest_V1_System_Endpoint{
+		Port:     w.String("80"),
+		Address:  w.String(uri),
+		IsDomain: w.Bool(false),
 	}
-	return uri, false
+
+	url, err := url.Parse(uri)
+	if err != nil {
+		return ret, ssl
+	}
+
+	host, port, err := net.SplitHostPort(url.Host)
+	if err == nil {
+		ret.Port = w.String(port)
+		ret.Address = w.String(host)
+	} else {
+		ret.Address = w.String(url.Host)
+	}
+
+	ret.IsDomain = w.Bool(!isIPAddress(ret.Address.GetValue()))
+
+	if url.Scheme == "https" {
+		ssl = true
+		if ret.Port == nil {
+			ret.Port = w.String("443")
+		}
+	}
+
+	return ret, ssl
+}
+
+func isIPAddress(addr string) bool {
+	return net.ParseIP(addr) != nil
 }
