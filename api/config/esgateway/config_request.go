@@ -137,7 +137,6 @@ func (c *ConfigRequest) SetGlobalConfig(g *ac.GlobalConfig) {
 func uriToEndpoint(uri string) (*ConfigRequest_V1_System_Endpoint, bool) {
 	ssl := false
 	ret := &ConfigRequest_V1_System_Endpoint{
-		Port:     w.String("80"),
 		Address:  w.String(uri),
 		IsDomain: w.Bool(false),
 	}
@@ -161,6 +160,10 @@ func uriToEndpoint(uri string) (*ConfigRequest_V1_System_Endpoint, bool) {
 		ssl = true
 		if ret.Port == nil {
 			ret.Port = w.String("443")
+		}
+	} else {
+		if ret.Port == nil {
+			ret.Port = w.String("80")
 		}
 	}
 
