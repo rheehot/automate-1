@@ -68,11 +68,18 @@ message External {
       google.protobuf.StringValue root_cert_file = 3;
     }
 
+    message Endpoint {
+      google.protobuf.BoolValue is_domain = 1;
+      google.protobuf.StringValue address = 2;
+      google.protobuf.StringValue port = 3;
+    }
+    
     google.protobuf.BoolValue enable = 1;
     repeated google.protobuf.StringValue nodes = 2;
     Backup backup = 3;
     Authentication auth = 4;
     SSL ssl = 5;
+    repeated Endpoint parsed_endpoints = 6;
   }
 
   message Postgresql {
