@@ -9,6 +9,8 @@ import (
 
 	ac "github.com/chef/automate/api/config/shared"
 	w "github.com/chef/automate/api/config/shared/wrappers"
+	"github.com/chef/automate/lib/config"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // NewConfigRequest returns a new instance of ConfigRequest with zero values.
@@ -41,7 +43,7 @@ func DefaultConfigRequest() *ConfigRequest {
 
 	c.V1.Sys.Ngx.Main.WorkerProcesses = w.Int32(4)
 	c.V1.Sys.Ngx.Main.MaxFails = w.Int32(10)
-	// c.V1.Sys.Ngx.Main.Resolvers = getSystemResolvers()
+	c.V1.Sys.Ngx.Main.Resolvers = getSystemResolvers()
 
 	c.V1.Sys.Ngx.Events.WorkerConnections = w.Int32(1024)
 
@@ -132,6 +134,16 @@ func (c *ConfigRequest) SetGlobalConfig(g *ac.GlobalConfig) {
 		c.V1.Sys.External.RootCert = g.GetV1().GetExternal().GetElasticsearch().GetSsl().GetRootCert()
 		c.V1.Sys.External.RootCertFile = g.GetV1().GetExternal().GetElasticsearch().GetSsl().GetRootCertFile()
 	}
+}
+
+func getSystemResolvers() []*wrapperspb.StringValue {
+	var resolvers []*wrapperspb.StringValue
+	ns := config.GetSystemResolvers()
+	for _, n := range ns {
+		resolvers = append(resolvers, w.String(n))
+	}
+
+	return resolvers
 }
 
 func uriToEndpoint(uri string) (*ConfigRequest_V1_System_Endpoint, bool) {
