@@ -22,7 +22,8 @@ The integration between a Chef Automate server and a ServiceNow instance require
 * Chef Automate
 * Chef Automate Incident Creation Application in ServiceNow
 
-The Chef Automate Incident Creation application is a ServiceNow certified scoped application available from the ServiceNow store. [Chef Automate](https://www.chef.io/automate/) provides a full suite of enterprise capabilities for workflow, node visibility, and compliance.
+[Chef Automate](https://www.chef.io/automate/) provides a full suite of enterprise capabilities for workflow, node visibility, and compliance.
+The Chef Automate Incident Creation application is a ServiceNow certified scoped application available from the ServiceNow store.
 Once configured, the Chef Automate server sends HTTPS JSON notifications to the Chef Automate Incident Creation Application in a ServiceNow instance to create or update incidents.
 
 ![ServiceNow and Chef Automate Flow](/images/automate/SNOW_Automate_diagram.png)
