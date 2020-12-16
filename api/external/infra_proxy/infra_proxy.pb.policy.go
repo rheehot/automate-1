@@ -9,9 +9,6 @@ import (
 )
 
 func init() {
-	policy.MapMethodTo("/chef.automate.api.infra_proxy.InfraProxy/GetVersion", "system:service:version", "system:serviceVersion:get", "GET", "/api/v0/infra/version", func(unexpandedResource string, input interface{}) string {
-		return unexpandedResource
-	})
 	policy.MapMethodTo("/chef.automate.api.infra_proxy.InfraProxy/GetServers", "infra:infraServers", "infra:infraServers:list", "GET", "/api/v0/infra/servers", func(unexpandedResource string, input interface{}) string {
 		return unexpandedResource
 	})
@@ -562,6 +559,21 @@ func init() {
 					return m.Description
 				case "json_class":
 					return m.JsonClass
+				default:
+					return ""
+				}
+			})
+		}
+		return ""
+	})
+	policy.MapMethodTo("/chef.automate.api.infra_proxy.InfraProxy/GetNodes", "infra:infraServers:{server_id}:orgs:{org_id}:nodes", "infra:infraServers:get", "GET", "/api/v0/infra/servers/{server_id}/orgs/{org_id}/nodes", func(unexpandedResource string, input interface{}) string {
+		if m, ok := input.(*request.Nodes); ok {
+			return policy.ExpandParameterizedResource(unexpandedResource, func(want string) string {
+				switch want {
+				case "org_id":
+					return m.OrgId
+				case "server_id":
+					return m.ServerId
 				default:
 					return ""
 				}

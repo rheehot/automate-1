@@ -15,7 +15,6 @@ steps:
   - label: lint hugo site
     command:
       - .expeditor/buildkite/hugo_lint.sh
-      - cd components/docs-chef-io && make lint
     timeout_in_minutes: 10
     retry:
       automatic:
@@ -114,12 +113,15 @@ steps:
             "/go/src/github.com/chef/automate"
           ]
 
-  - label: ":semgrep: Published"
+  - label: ":semgrep: Security"
     command:
     - echo "running in $(pwd)"
     - export SEMGREP_JOB_URL=$BUILDKITE_BUILD_URL
     - export SEMGREP_BRANCH=$BUILDKITE_BRANCH
-    - python -m semgrep_agent --publish-token "\$SEMGREP_TOKEN" --publish-deployment \$SEMGREP_ID
+    - export SEMGREP_REPO_NAME=chef/automate
+    - echo "branch=[$BUILDKITE_BRANCH], PR base branch=[$BUILDKITE_PULL_REQUEST_BASE_BRANCH]"
+    - \[ -z "$BUILDKITE_PULL_REQUEST_BASE_BRANCH" \] && echo "manual build; using 'master' as base branch"
+    - python -m semgrep_agent --publish-token "\$SEMGREP_TOKEN" --publish-deployment \$SEMGREP_ID --baseline-ref \${BUILDKITE_PULL_REQUEST_BASE_BRANCH:-master}
     timeout_in_minutes: 20
     expeditor:
       secrets: true
@@ -490,7 +492,7 @@ steps:
   - label: "iam v2 with no legacy policies force-upgrade to v2"
     command:
       - integration/run_test integration/tests/iam_v2_no_legacy_to_v2_force_upgrade.sh
-    timeout_in_minutes: 20
+    timeout_in_minutes: 25
     expeditor:
       secrets:
         A2_LICENSE:

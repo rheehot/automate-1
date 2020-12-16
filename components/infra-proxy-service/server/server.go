@@ -16,7 +16,17 @@ import (
 	"github.com/chef/automate/lib/tracing"
 )
 
-// NewGRPCServer creates a grpc server that serves all Teams GRPC APIs
+// Server is an infra-proxy server
+type Server struct {
+	service *service.Service
+}
+
+// NewServer returns an infra-proxy server
+func NewServer(service *service.Service) *Server {
+	return &Server{service: service}
+}
+
+// NewGRPCServer creates a grpc server that serves all infra-proxy-service GRPC APIs
 func NewGRPCServer(s *service.Service) *grpc.Server {
 	g := s.ConnFactory.NewServer(
 		grpc.UnaryInterceptor(

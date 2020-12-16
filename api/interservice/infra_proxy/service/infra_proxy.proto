@@ -3,7 +3,6 @@ syntax = "proto3";
 package chef.automate.domain.infra_proxy.service;
 option go_package = "github.com/chef/automate/api/interservice/infra_proxy/service";
 
-import "external/common/version/version.proto";
 import "interservice/infra_proxy/request/servers.proto";
 import "interservice/infra_proxy/request/orgs.proto";
 import "interservice/infra_proxy/request/cookbooks.proto";
@@ -25,8 +24,6 @@ import "interservice/infra_proxy/response/nodes.proto";
 import "interservice/infra_proxy/response/policyfiles.proto";
 
 service InfraProxyService {
-    rpc GetVersion      (chef.automate.api.common.version.VersionInfoRequest) returns (chef.automate.api.common.version.VersionInfo) {};
-
     rpc CreateServer    (chef.automate.domain.infra_proxy.request.CreateServer) returns (chef.automate.domain.infra_proxy.response.CreateServer) {};
     rpc DeleteServer    (chef.automate.domain.infra_proxy.request.DeleteServer) returns (chef.automate.domain.infra_proxy.response.DeleteServer) {};
     rpc UpdateServer    (chef.automate.domain.infra_proxy.request.UpdateServer) returns (chef.automate.domain.infra_proxy.response.UpdateServer) {};
@@ -67,6 +64,7 @@ service InfraProxyService {
     rpc UpdateEnvironment (chef.automate.domain.infra_proxy.request.UpdateEnvironment) returns (chef.automate.domain.infra_proxy.response.Environment) {};
     rpc DeleteEnvironment (chef.automate.domain.infra_proxy.request.Environment) returns (chef.automate.domain.infra_proxy.response.Environment) {};
 
+    rpc GetNodes (chef.automate.domain.infra_proxy.request.Nodes) returns (chef.automate.domain.infra_proxy.response.Nodes) {};
     rpc GetAffectedNodes (chef.automate.domain.infra_proxy.request.AffectedNodes) returns (chef.automate.domain.infra_proxy.response.AffectedNodes) {};
     rpc DeleteNode (chef.automate.domain.infra_proxy.request.DeleteNode) returns (chef.automate.domain.infra_proxy.response.DeleteNode) {};
     rpc UpdateNode (chef.automate.domain.infra_proxy.request.UpdateNode) returns (chef.automate.domain.infra_proxy.response.UpdateNode) {};
