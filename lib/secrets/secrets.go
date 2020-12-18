@@ -10,10 +10,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/hex"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -166,7 +164,7 @@ func (d *diskStore) Initialize() error {
 		return err
 	}
 	if !keyExists {
-		_, err := createEncryptionKey(d.basePath)
+		_, err := d.createEncryptionKey()
 		if err != nil {
 			return err
 		}
@@ -221,25 +219,47 @@ func (d *diskStore) SetSecret(secret SecretName, data []byte) error {
 		return errors.Wrap(err, "could not chown directory for secrets data")
 	}
 
-	// created encrypted data from input data
+	// creates encrypted data from input data
 	encryptedData, iv, err := getEncryptedData(data, d.basePath)
 	if err != nil {
 		return err
 	}
 
 	// writes as toml file
-	err = writeToml("AES256 CTR mode", encodeBase64(iv), encodeBase64(encryptedData), secretPath)
+	err = writeToml("AES256 CTR mode", hex.EncodeToString(iv), hex.EncodeToString(encryptedData), secretPath, d.ownerUid, d.ownerGid)
 	if err != nil {
 		return errors.Wrap(err, "could not write secrets data to disk")
 	}
 
-	// TODO(ssd) 2018-08-20: Should this be an option we can pass to AtomicWrite?
-	err = os.Chown(secretPath, d.ownerUid, d.ownerGid)
+	return nil
+}
+
+// Creates the Key used for the secret values' encryption
+// we generate a random byte array of 32 bytes required for the AES256 encryption
+// save the key to a file named key in base path and sets owner
+// returns the key
+func (d *diskStore) createEncryptionKey() ([]byte, error) {
+	secretKey, err := GenerateRandomBytes(32)
 	if err != nil {
-		return errors.Wrap(err, "could not chown secrets data")
+		return nil, errors.Wrap(err, "could not generate random secret for encryption")
 	}
 
-	return nil
+	// creating path to store the secret key
+	secretKeyPath := filepath.Join(d.basePath, "key")
+	s := bytes.NewReader(secretKey)
+
+	// writing the key to a file
+	err = fileutils.AtomicWrite(secretKeyPath, s, fileutils.WithAtomicWriteFileMode(0700))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not write secret to disk")
+	}
+
+	// TODO(ssd) 2018-08-20: Should this be an option we can pass to AtomicWrite?
+	err = os.Chown(secretKeyPath, d.ownerUid, d.ownerGid)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not chown secrets data")
+	}
+	return secretKey, nil
 }
 
 // GenerateRandomBytes generates the requested number of ASCII bytes
@@ -286,18 +306,6 @@ func keyExists(basePath string) (bool, error) {
 	return fileutils.PathExists(path)
 }
 
-func encodeBase64(b []byte) string {
-	return base64.StdEncoding.EncodeToString(b)
-}
-
-func decodeBase64(s string) ([]byte, error) {
-	data, err := base64.StdEncoding.DecodeString(s)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to decode base64 string")
-	}
-	return data, nil
-}
-
 // Takes in key and the data, then encrypts the base64 encoded data
 // Uses AES256 CTR mode for encryption
 // returns the ciphertext, iv and error
@@ -310,7 +318,7 @@ func encrypt(key []byte, value []byte) ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "could not generate random iv for encryption")
 	}
-	b := encodeBase64(value)
+	b := hex.EncodeToString(value)
 	stream := cipher.NewCTR(block, iv)
 	ciphertext := make([]byte, len(b))
 	stream.XORKeyStream(ciphertext, []byte(b))
@@ -323,16 +331,17 @@ func decrypt(block cipher.Block, ciphertext []byte, iv []byte) ([]byte, error) {
 	stream := cipher.NewCTR(block, iv)
 	plain := make([]byte, len(ciphertext))
 	stream.XORKeyStream(plain, ciphertext)
-	d, err := decodeBase64(string(plain))
+	d, err := hex.DecodeString(string(plain))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Failed to decode secret value while decryption")
 	}
 	return d, nil
 }
 
 // function used to write the secret values to given file in toml format
+// also sets the owner for that file
 // stores the name of the algorithm , iv and the ciphertext
-func writeToml(algorithm string, iv string, ciphertext string, path string) error {
+func writeToml(algorithm string, iv string, ciphertext string, path string, ownerUID int, ownerGID int) error {
 	secretData := SecretKeyToml{
 		Algorithm:  algorithm,
 		IV:         iv,
@@ -341,12 +350,18 @@ func writeToml(algorithm string, iv string, ciphertext string, path string) erro
 
 	buf := new(bytes.Buffer)
 	if err := toml.NewEncoder(buf).Encode(secretData); err != nil {
-		log.Fatal(err)
+		return errors.Wrap(err, "failed to encode struct SecretKeyToml data to toml")
 	}
 
 	err := fileutils.AtomicWrite(path, bytes.NewReader(buf.Bytes()), fileutils.WithAtomicWriteFileMode(0700))
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error writing the secret file")
+	}
+
+	// TODO(ssd) 2018-08-20: Should this be an option we can pass to AtomicWrite?
+	err = os.Chown(path, ownerUID, ownerGID)
+	if err != nil {
+		return errors.Wrap(err, "could not chown secrets data")
 	}
 	return nil
 }
@@ -361,16 +376,12 @@ func getEncryptedData(data []byte, basePath string) ([]byte, []byte, error) {
 		return nil, nil, err
 	}
 	if !keyExists {
-		secretKey, err = createEncryptionKey(basePath)
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
-		path := filepath.Join(basePath, "key")
-		secretKey, err = ioutil.ReadFile(path)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "could not read secrets key (unexpected error)")
-		}
+		return nil, nil, errors.New("Could not find the encryption key")
+	}
+	path := filepath.Join(basePath, "key")
+	secretKey, err = ioutil.ReadFile(path)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "could not read secrets key (unexpected error)")
 	}
 	encryptedData, iv, err := encrypt(secretKey, data)
 	if err != nil {
@@ -386,23 +397,24 @@ func getDecryptedData(basePath string, ret []byte) ([]byte, error) {
 	key, err := ioutil.ReadFile(keyPath)
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Failed to covert secret key to block")
 	}
 	var secretData SecretKeyToml
 	_, err = toml.Decode(string(ret), &secretData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Failed to unmarshal data from secret toml file")
 	}
 
 	// coverts ciphertext to byte from base64
-	dcdCipher, err := decodeBase64(secretData.Ciphertext)
+	dcdCipher, err := hex.DecodeString(secretData.Ciphertext)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Failed to decode secret ciphertext value while reading from file")
 	}
+
 	// coverts iv to byte from base64
-	dcdIv, err := decodeBase64(secretData.IV)
+	dcdIv, err := hex.DecodeString(secretData.IV)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Failed to decode iv value while reading from file")
 	}
 
 	decrypted, err := decrypt(block, dcdCipher, dcdIv)
@@ -410,24 +422,4 @@ func getDecryptedData(basePath string, ret []byte) ([]byte, error) {
 		return nil, err
 	}
 	return decrypted, nil
-}
-
-// Creates the Key used for the secret values' encryption
-// we generate a random byte array of 32 bytes required for the AES256 encryption
-// returns the key
-func createEncryptionKey(basePath string) ([]byte, error) {
-	secretKey, err := GenerateRandomBytes(32)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not generate random secret for encryption")
-	}
-
-	// creating path to store the secret key
-	secretKeyPath := filepath.Join(basePath, "key")
-	s := bytes.NewReader(secretKey)
-	// writing the key to a file
-	err = fileutils.AtomicWrite(secretKeyPath, s, fileutils.WithAtomicWriteFileMode(0700))
-	if err != nil {
-		return nil, errors.Wrap(err, "could not write secret to disk")
-	}
-	return secretKey, nil
 }
