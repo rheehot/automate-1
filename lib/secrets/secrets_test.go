@@ -7,6 +7,9 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/leanovate/gopter"
+	"github.com/leanovate/gopter/gen"
+	"github.com/leanovate/gopter/prop"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -61,7 +64,7 @@ func TestDiskSecretStore(t *testing.T) {
 		err := dataStore.SetSecret(testSecretName, testSecretContent)
 		require.NoError(t, err)
 
-		stat, err := os.Stat(filepath.Join(dataDir, "test", "test-secret-1"))
+		stat, err := os.Stat(filepath.Join(dataDir, "test", "test-secret-1"+secrets.SecretFileExtension))
 		require.NoError(t, err)
 		assert.Equal(t, os.FileMode(0700), stat.Mode())
 		assert.Equal(t, uint32(uid), stat.Sys().(*syscall.Stat_t).Uid)
@@ -94,4 +97,54 @@ func TestDiskSecretStore(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, exists)
 	})
+}
+
+func TestSubPropertyBased(t *testing.T) {
+	parameters := gopter.DefaultTestParameters()
+	parameters.MinSuccessfulTests = 500
+	properties := gopter.NewProperties(parameters)
+
+	tmpDir, _ := ioutil.TempDir("", "secret-store-tests")
+	defer os.RemoveAll(tmpDir)
+
+	uid := os.Getuid()
+	gid := os.Getgid()
+	dataDir := filepath.Join(tmpDir, "data-dir")
+
+	dataStore := secrets.NewDiskStore(dataDir, uid, gid)
+	err := dataStore.Initialize()
+	require.NoError(t, err, "failed to initialize")
+
+	properties.Property("generate multiple random test cases to check if get and set can roundtrip a secret", prop.ForAll(
+		func(a string, b string, c string) bool {
+			testSecretName := secrets.SecretName{a, b}
+			testSecretContent := []byte(c)
+			err := dataStore.SetSecret(testSecretName, testSecretContent)
+			if err != nil {
+				return reportErrorAndYieldFalse(t, err)
+			}
+			secretContent, err := dataStore.GetSecret(testSecretName)
+			if err != nil {
+				return reportErrorAndYieldFalse(t, err)
+			}
+			return string(testSecretContent) == string(secretContent)
+		},
+		stringGen(10).WithLabel("a"),
+		stringGen(10).WithLabel("b"),
+		stringGen(10).WithLabel("c"),
+	))
+	properties.TestingRun(t)
+}
+
+// gopter helpers
+func stringGen(size int) gopter.Gen {
+	return gen.SliceOfN(size, gen.AlphaNumChar()).Map(func(r []rune) string {
+		return string(r)
+	}).WithShrinker(gen.StringShrinker)
+}
+
+func reportErrorAndYieldFalse(t *testing.T, err error) bool {
+	t.Helper()
+	t.Error(err.Error())
+	return false
 }

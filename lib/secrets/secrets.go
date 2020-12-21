@@ -108,6 +108,9 @@ const (
 	// secrets store, read the secrets as root, and then drop privs when
 	// we exec the command.
 	DefaultDiskStoreDataOwner = "hab"
+
+	// SecretFileExtension is the extension name for the encrypted secrets file
+	SecretFileExtension = ".enc.toml"
 )
 
 func NewDiskStoreReader(basePath string) SecretsReader {
@@ -174,42 +177,52 @@ func (d *diskStore) Initialize() error {
 }
 
 func (d *diskStore) Exists(secret SecretName) (bool, error) {
+	// added logic to check if secret is encrypted or not
+	encryptedPath := filepath.Join(d.basePath, secret.Group, addSecretFileExtension(secret.Name))
+	encryptedExists, err := fileutils.PathExists(encryptedPath)
+	if err != nil {
+		return false, err
+	}
+	if encryptedExists {
+		return encryptedExists, nil
+	}
 	path := filepath.Join(d.basePath, secret.Group, secret.Name)
 	return fileutils.PathExists(path)
 }
 
 func (d *diskStore) GetSecret(secret SecretName) ([]byte, error) {
-	var ret []byte
 
 	// checks if the encrypted secret exists
-	pathToEncryptedSecret := filepath.Join(d.basePath, secret.Group, secret.Name+".enc.toml")
+	pathToEncryptedSecret := filepath.Join(d.basePath, secret.Group, addSecretFileExtension(secret.Name))
 	encryptedSecretExists, err := fileutils.PathExists(pathToEncryptedSecret)
-
+	if err != nil {
+		return nil, errors.Wrap(err, "unexpected error while checking if encrypted file exists (secret may not have been generated yet)")
+	}
 	if encryptedSecretExists {
-		ret, err = ioutil.ReadFile(pathToEncryptedSecret)
+		value, err := ioutil.ReadFile(pathToEncryptedSecret)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not read secrets data (secret may not have been generated yet)")
+			return nil, errors.Wrap(err, "unexpected error while reading encrypted secret data")
 		}
 		// decrypts and returns the secret value
-		retE, err := getDecryptedData(d.basePath, ret)
+		ret, err := getDecryptedData(d.basePath, value)
 		if err != nil {
-			return nil, errors.Wrap(err, "could not decrypt secret with existing key)")
+			return nil, errors.Wrap(err, "could not decrypt secret with existing key")
 		}
-		return retE, err
+		return ret, err
 	}
 
 	// else return unencrypted secret
 	pathToUnencryptedSecret := filepath.Join(d.basePath, secret.Group, secret.Name)
-	ret, err = ioutil.ReadFile(pathToUnencryptedSecret)
+	ret, err := ioutil.ReadFile(pathToUnencryptedSecret)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not read secrets data (secret may not have been generated yet)")
+		return nil, errors.Wrap(err, "could not read unencrypted secrets data (secret may not have been generated yet)")
 	}
 	return ret, err
 }
 
 func (d *diskStore) SetSecret(secret SecretName, data []byte) error {
 	parentDir := filepath.Join(d.basePath, secret.Group)
-	secretPath := filepath.Join(parentDir, secret.Name+".enc.toml")
+	secretPath := filepath.Join(parentDir, addSecretFileExtension(secret.Name))
 	err := os.MkdirAll(parentDir, 0700)
 	if err != nil {
 		return errors.Wrap(err, "could not create directory for secrets data")
@@ -306,7 +319,7 @@ func keyExists(basePath string) (bool, error) {
 	return fileutils.PathExists(path)
 }
 
-// Takes in key and the data, then encrypts the base64 encoded data
+// Takes in key and the data, then encrypts the hex encoded data
 // Uses AES256 CTR mode for encryption
 // returns the ciphertext, iv and error
 func encrypt(key []byte, value []byte) ([]byte, []byte, error) {
@@ -326,7 +339,7 @@ func encrypt(key []byte, value []byte) ([]byte, []byte, error) {
 }
 
 // decrpting the cipher for ctr mode
-// returns the decoded data ( originally encoded with base64 ) and error
+// returns the decoded data ( originally encoded with hex ) and error
 func decrypt(block cipher.Block, ciphertext []byte, iv []byte) ([]byte, error) {
 	stream := cipher.NewCTR(block, iv)
 	plain := make([]byte, len(ciphertext))
@@ -390,9 +403,9 @@ func getEncryptedData(data []byte, basePath string) ([]byte, []byte, error) {
 	return encryptedData, iv, nil
 }
 
-// gets the secret from the toml file and decrypts it
+// gets the secret from the toml file and decrypts the file contents
 // returns the decrypted data or error
-func getDecryptedData(basePath string, ret []byte) ([]byte, error) {
+func getDecryptedData(basePath string, data []byte) ([]byte, error) {
 	keyPath := filepath.Join(basePath, "key")
 	key, err := ioutil.ReadFile(keyPath)
 	block, err := aes.NewCipher(key)
@@ -400,18 +413,18 @@ func getDecryptedData(basePath string, ret []byte) ([]byte, error) {
 		return nil, errors.Wrap(err, "Failed to covert secret key to block")
 	}
 	var secretData SecretKeyToml
-	_, err = toml.Decode(string(ret), &secretData)
+	_, err = toml.Decode(string(data), &secretData)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to unmarshal data from secret toml file")
 	}
 
-	// coverts ciphertext to byte from base64
+	// coverts ciphertext to byte from hex
 	dcdCipher, err := hex.DecodeString(secretData.Ciphertext)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to decode secret ciphertext value while reading from file")
 	}
 
-	// coverts iv to byte from base64
+	// coverts iv to byte from hex
 	dcdIv, err := hex.DecodeString(secretData.IV)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to decode iv value while reading from file")
@@ -422,4 +435,8 @@ func getDecryptedData(basePath string, ret []byte) ([]byte, error) {
 		return nil, err
 	}
 	return decrypted, nil
+}
+
+func addSecretFileExtension(name string) string {
+	return name + SecretFileExtension
 }
