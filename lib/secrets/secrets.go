@@ -319,7 +319,7 @@ func keyExists(basePath string) (bool, error) {
 	return fileutils.PathExists(path)
 }
 
-// Takes in key and the data, then encrypts the hex encoded data
+// Takes in key and the data
 // Uses AES256 CTR mode for encryption
 // returns the ciphertext, iv and error
 func encrypt(key []byte, value []byte) ([]byte, []byte, error) {
@@ -331,24 +331,19 @@ func encrypt(key []byte, value []byte) ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "could not generate random iv for encryption")
 	}
-	b := hex.EncodeToString(value)
 	stream := cipher.NewCTR(block, iv)
-	ciphertext := make([]byte, len(b))
-	stream.XORKeyStream(ciphertext, []byte(b))
+	ciphertext := make([]byte, len(value))
+	stream.XORKeyStream(ciphertext, value)
 	return ciphertext, iv, nil
 }
 
 // decrpting the cipher for ctr mode
-// returns the decoded data ( originally encoded with hex ) and error
-func decrypt(block cipher.Block, ciphertext []byte, iv []byte) ([]byte, error) {
+// returns the data and error
+func decrypt(block cipher.Block, ciphertext []byte, iv []byte) []byte {
 	stream := cipher.NewCTR(block, iv)
 	plain := make([]byte, len(ciphertext))
 	stream.XORKeyStream(plain, ciphertext)
-	d, err := hex.DecodeString(string(plain))
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to decode secret value while decryption")
-	}
-	return d, nil
+	return plain
 }
 
 // function used to write the secret values to given file in toml format
@@ -430,10 +425,7 @@ func getDecryptedData(basePath string, data []byte) ([]byte, error) {
 		return nil, errors.Wrap(err, "Failed to decode iv value while reading from file")
 	}
 
-	decrypted, err := decrypt(block, dcdCipher, dcdIv)
-	if err != nil {
-		return nil, err
-	}
+	decrypted := decrypt(block, dcdCipher, dcdIv)
 	return decrypted, nil
 }
 
