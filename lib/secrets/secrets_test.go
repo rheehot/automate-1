@@ -134,16 +134,20 @@ func TestDiskSecretStore(t *testing.T) {
 
 	// checks if GetSecret method is able to properly get the secrets
 	// set using SetSecret method
-	// uses multiple randomly generated secret name, secret group and secret content
+	// uses multiple randomly generated secret name, secret group
+	// genrates content of length range from 1 byte to 5 kb
 	t.Run("get and set can roundtrip a secret with random string combinations", func(t *testing.T) {
 		parameters := gopter.DefaultTestParameters()
 		parameters.MinSuccessfulTests = 500
 		properties := gopter.NewProperties(parameters)
 		properties.Property("generate multiple random test cases to check if get and set can roundtrip a secret", prop.ForAll(
-			func(a string, b string, c string) bool {
-				testSecretName := secrets.SecretName{a, b}
-				testSecretContent := []byte(c)
-				err := dataStore.SetSecret(testSecretName, testSecretContent)
+			func(group string, name string, maxContentLength int) bool {
+				testSecretName := secrets.SecretName{group, name}
+				testSecretContent, err := secrets.GenerateRandomBytes(maxContentLength)
+				if err != nil {
+					return reportErrorAndYieldFalse(t, err)
+				}
+				err = dataStore.SetSecret(testSecretName, testSecretContent)
 				if err != nil {
 					return reportErrorAndYieldFalse(t, err)
 				}
@@ -151,11 +155,12 @@ func TestDiskSecretStore(t *testing.T) {
 				if err != nil {
 					return reportErrorAndYieldFalse(t, err)
 				}
-				return string(testSecretContent) == string(secretContent)
+				return bytes.Compare(testSecretContent, secretContent) == 0
 			},
-			stringGen(10).WithLabel("a"),
-			stringGen(10).WithLabel("b"),
-			stringGen(10).WithLabel("c"),
+			stringGen(10).WithLabel("group"),
+			stringGen(10).WithLabel("name"),
+			// required to generate content from 1 byte to 5 kb
+			gen.IntRange(1, 5120).WithLabel("content"),
 		))
 		properties.TestingRun(t)
 	})
