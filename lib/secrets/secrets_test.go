@@ -120,7 +120,7 @@ func TestDiskSecretStore(t *testing.T) {
 		err = os.Chown(parentDir, uid, gid)
 		require.NoError(t, err)
 
-		// creates secret wile without extension and sets owner permissions
+		// creates secret file without extension and sets owner permissions
 		s := bytes.NewReader(testSecretContent)
 		err = fileutils.AtomicWrite(secretPath, s, fileutils.WithAtomicWriteFileMode(0700))
 		require.NoError(t, err)
