@@ -1,6 +1,7 @@
 package secrets_test
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -97,43 +98,67 @@ func TestDiskSecretStore(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, exists)
 	})
-}
 
-func TestSubPropertyBased(t *testing.T) {
-	parameters := gopter.DefaultTestParameters()
-	parameters.MinSuccessfulTests = 500
-	properties := gopter.NewProperties(parameters)
+	// checks if initialise method is setting the encryption key properly
+	t.Run("init creates the key file with mode 0700", func(t *testing.T) {
+		stat, err := os.Stat(filepath.Join(dataDir, "key"))
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0700), stat.Mode())
+		assert.Equal(t, uint32(uid), stat.Sys().(*syscall.Stat_t).Uid)
+	})
 
-	tmpDir, _ := ioutil.TempDir("", "secret-store-tests")
-	defer os.RemoveAll(tmpDir)
+	// checks if GetSecret method is able to read old unencrypted secrets
+	t.Run("Able to read preexisting unencrypted secrets", func(t *testing.T) {
+		testSecretName := secrets.SecretName{"test", "test-secret-2"}
+		testSecretContent := []byte("this-is-a-secret")
 
-	uid := os.Getuid()
-	gid := os.Getgid()
-	dataDir := filepath.Join(tmpDir, "data-dir")
+		// creates group directory with owner permissions
+		parentDir := filepath.Join(dataDir, testSecretName.Group)
+		secretPath := filepath.Join(parentDir, testSecretName.Name)
+		err := os.MkdirAll(parentDir, 0700)
+		require.NoError(t, err)
+		err = os.Chown(parentDir, uid, gid)
+		require.NoError(t, err)
 
-	dataStore := secrets.NewDiskStore(dataDir, uid, gid)
-	err := dataStore.Initialize()
-	require.NoError(t, err, "failed to initialize")
+		// creates secret wile without extension and sets owner permissions
+		s := bytes.NewReader(testSecretContent)
+		err = fileutils.AtomicWrite(secretPath, s, fileutils.WithAtomicWriteFileMode(0700))
+		require.NoError(t, err)
+		err = os.Chown(parentDir, uid, gid)
+		require.NoError(t, err)
 
-	properties.Property("generate multiple random test cases to check if get and set can roundtrip a secret", prop.ForAll(
-		func(a string, b string, c string) bool {
-			testSecretName := secrets.SecretName{a, b}
-			testSecretContent := []byte(c)
-			err := dataStore.SetSecret(testSecretName, testSecretContent)
-			if err != nil {
-				return reportErrorAndYieldFalse(t, err)
-			}
-			secretContent, err := dataStore.GetSecret(testSecretName)
-			if err != nil {
-				return reportErrorAndYieldFalse(t, err)
-			}
-			return string(testSecretContent) == string(secretContent)
-		},
-		stringGen(10).WithLabel("a"),
-		stringGen(10).WithLabel("b"),
-		stringGen(10).WithLabel("c"),
-	))
-	properties.TestingRun(t)
+		secretContent, err := dataStore.GetSecret(testSecretName)
+		require.NoError(t, err)
+		assert.Equal(t, testSecretContent, secretContent)
+	})
+
+	// checks if GetSecret method is able to properly get the secrets
+	// set using SetSecret method
+	// uses multiple randomly generated secret name, secret group and secret content
+	t.Run("get and set can roundtrip a secret with random string combinations", func(t *testing.T) {
+		parameters := gopter.DefaultTestParameters()
+		parameters.MinSuccessfulTests = 500
+		properties := gopter.NewProperties(parameters)
+		properties.Property("generate multiple random test cases to check if get and set can roundtrip a secret", prop.ForAll(
+			func(a string, b string, c string) bool {
+				testSecretName := secrets.SecretName{a, b}
+				testSecretContent := []byte(c)
+				err := dataStore.SetSecret(testSecretName, testSecretContent)
+				if err != nil {
+					return reportErrorAndYieldFalse(t, err)
+				}
+				secretContent, err := dataStore.GetSecret(testSecretName)
+				if err != nil {
+					return reportErrorAndYieldFalse(t, err)
+				}
+				return string(testSecretContent) == string(secretContent)
+			},
+			stringGen(10).WithLabel("a"),
+			stringGen(10).WithLabel("b"),
+			stringGen(10).WithLabel("c"),
+		))
+		properties.TestingRun(t)
+	})
 }
 
 // gopter helpers
