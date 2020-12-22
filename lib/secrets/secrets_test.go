@@ -160,7 +160,7 @@ func TestDiskSecretStore(t *testing.T) {
 			stringGen(10).WithLabel("group"),
 			stringGen(10).WithLabel("name"),
 			// required to generate content from 1 byte to 5 kb
-			gen.IntRange(1, 5120).WithLabel("content"),
+			gen.IntRange(1, 5120).WithLabel("maxContentLength"),
 		))
 		properties.TestingRun(t)
 	})
