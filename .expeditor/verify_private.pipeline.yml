@@ -25,93 +25,93 @@ steps:
       executor:
         docker:
 
-  # license scout requires github account access because we currently
-  # rely on at least 2 private repositories.
-  - label: license scout
-    command:
-      # here we reuse the license_scout.sh script used by expeditor to publish the manifest
-      - .expeditor/license_scout.sh
-    timeout_in_minutes: 20
-    retry:
-      automatic:
-        limit: 1
-    expeditor:
-      secrets:
-        GITHUB_TOKEN:
-          account: github/chef
-          field: token
-      executor:
-        docker:
+  # # license scout requires github account access because we currently
+  # # rely on at least 2 private repositories.
+  # - label: license scout
+  #   command:
+  #     # here we reuse the license_scout.sh script used by expeditor to publish the manifest
+  #     - .expeditor/license_scout.sh
+  #   timeout_in_minutes: 20
+  #   retry:
+  #     automatic:
+  #       limit: 1
+  #   expeditor:
+  #     secrets:
+  #       GITHUB_TOKEN:
+  #         account: github/chef
+  #         field: token
+  #     executor:
+  #       docker:
 
-  # We need to build in order to run the
-  # integration tests.
-  - label: build
-    command:
-      - scripts/verify_build.sh
-    timeout_in_minutes: 60
-    env:
-      ALLOW_LOCAL_PACKAGES: true
-      HAB_STUDIO_SUP: false
-      HAB_NONINTERACTIVE: true
-    expeditor:
-      secrets:
-        HAB_STUDIO_SECRET_GITHUB_TOKEN:
-          account: github/chef
-          field: token
-      executor:
-        linux:
-          privileged: true
+  # # We need to build in order to run the
+  # # integration tests.
+  # - label: build
+  #   command:
+  #     - scripts/verify_build.sh
+  #   timeout_in_minutes: 60
+  #   env:
+  #     ALLOW_LOCAL_PACKAGES: true
+  #     HAB_STUDIO_SUP: false
+  #     HAB_NONINTERACTIVE: true
+  #   expeditor:
+  #     secrets:
+  #       HAB_STUDIO_SECRET_GITHUB_TOKEN:
+  #         account: github/chef
+  #         field: token
+  #     executor:
+  #       linux:
+  #         privileged: true
 
 
-  - label: "[unit] license-control-service"
-    command:
-      - scripts/install_golang.sh
-      - scripts/setup_buildkite_pg.sh lcs_test
-      - echo "\$A2_LICENSE" > dev/license.jwt
-      - cd components/license-control-service
-      - make lint test
-    timeout_in_minutes: 10
-    retry:
-      automatic:
-        limit: 1
-    expeditor:
-      secrets:
-        A2_LICENSE:
-          path: secret/a2/license
-          field: license
-      executor:
-        docker:
+  # - label: "[unit] license-control-service"
+  #   command:
+  #     - scripts/install_golang.sh
+  #     - scripts/setup_buildkite_pg.sh lcs_test
+  #     - echo "\$A2_LICENSE" > dev/license.jwt
+  #     - cd components/license-control-service
+  #     - make lint test
+  #   timeout_in_minutes: 10
+  #   retry:
+  #     automatic:
+  #       limit: 1
+  #   expeditor:
+  #     secrets:
+  #       A2_LICENSE:
+  #         path: secret/a2/license
+  #         field: license
+  #     executor:
+  #       docker:
 
-  - label: "[unit] trial-license-service"
-    command:
-      - scripts/install_golang.sh
-      - echo "\$A2_LICENSE" > dev/license.jwt
-      - cd components/trial-license-service
-      - make static unit
-    timeout_in_minutes: 10
-    retry:
-      automatic:
-        limit: 1
-    expeditor:
-      secrets:
-        A2_LICENSE:
-          path: secret/a2/license
-          field: license
-      executor:
-        docker:
+  # - label: "[unit] trial-license-service"
+  #   command:
+  #     - scripts/install_golang.sh
+  #     - echo "\$A2_LICENSE" > dev/license.jwt
+  #     - cd components/trial-license-service
+  #     - make static unit
+  #   timeout_in_minutes: 10
+  #   retry:
+  #     automatic:
+  #       limit: 1
+  #   expeditor:
+  #     secrets:
+  #       A2_LICENSE:
+  #         path: secret/a2/license
+  #         field: license
+  #     executor:
+  #       docker:
 
-  - label: ":semgrep: Custom"
-    expeditor:
-      executor:
-        docker:
-          image: returntocorp/semgrep:0.32.0
-          entrypoint: semgrep
-          command: [
-            "--error",
-            "--exclude", "*.spec.ts",
-            "--config", "/go/src/github.com/chef/automate/.semgrep",
-            "/go/src/github.com/chef/automate"
-          ]
+  # - label: ":semgrep: Custom"
+  #   expeditor:
+  #     executor:
+  #       docker:
+  #         image: returntocorp/semgrep:0.32.0
+  #         entrypoint: semgrep
+  #         command: [
+  #           "--error",
+  #           "--exclude", "*.spec.ts",
+  #           "--config", "/go/src/github.com/chef/automate/.semgrep",
+  #           "/go/src/github.com/chef/automate"
+  #         ]
 
   - label: ":semgrep: Security"
     command:
@@ -124,8 +124,10 @@ steps:
       - export SEMGREP_REPO_URL=https://github.com/chef/automate
       - echo "branch=[$BUILDKITE_BRANCH], PR base branch=[$BUILDKITE_PULL_REQUEST_BASE_BRANCH]"
       - export BASELINE=$BUILDKITE_PULL_REQUEST_BASE_BRANCH
-      - \[ -z "$BASELINE" \] && echo "baseline is zero"
-      - \[ "$BUILDKITE_BRANCH" != "master" \] && \[ -z "$BASELINE" \] && echo "manual build; using 'master' as base branch" && BASELINE=master
+      - echo "baseline = [\$BASELINE]"
+      - \[ -z "\$BASELINE" \] && echo "baseline is zero (1)"
+      - \[ "\$BASELINE" == "" \] && echo "baseline is zero (2)"
+      - \[ "$BUILDKITE_BRANCH" != "master" \] && \[ -z "\$BASELINE" \] && echo "manual build; using 'master' as base branch" && BASELINE=master
       - \[ "$BUILDKITE_BRANCH" == "master" \] && echo "build on master; using 'master~1' as base branch" && BASELINE=master~1
       - python -m semgrep_agent --publish-token "\$SEMGREP_TOKEN" --publish-deployment \$SEMGREP_ID --baseline-ref \$BASELINE
     timeout_in_minutes: 10
