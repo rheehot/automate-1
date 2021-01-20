@@ -68,3 +68,10 @@ message Node {
     // Node override attributes JSON.
     string override_attributes = 11;
 }
+
+message UpdateNodeEnvironment {
+    // Node name.
+    string name = 1;
+    // Node environment name.
+    string environment = 2;
+}

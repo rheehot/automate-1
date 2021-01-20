@@ -67,3 +67,14 @@ message UpdateNode {
     // Node override attributes JSON.
     google.protobuf.Struct override_attributes = 11;
 }
+
+message UpdateNodeEnvironment {
+    // Chef organization ID.
+    string org_id = 1;
+    // Chef Infra Server ID.
+    string server_id = 2;
+    // Node name.
+    string name = 3;
+    // Node environment name.
+    string environment = 4;
+}
