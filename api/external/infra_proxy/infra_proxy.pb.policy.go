@@ -659,6 +659,25 @@ func init() {
 		}
 		return ""
 	})
+	policy.MapMethodTo("/chef.automate.api.infra_proxy.InfraProxy/UpdateNodeAttributes", "infra:infraServers:{server_id}:orgs:{org_id}:nodes", "infra:infraServers:update", "PUT", "/api/v0/infra/servers/{server_id}/orgs/{org_id}/nodes/{name}/attributes", func(unexpandedResource string, input interface{}) string {
+		if m, ok := input.(*request.UpdateNodeAttributes); ok {
+			return policy.ExpandParameterizedResource(unexpandedResource, func(want string) string {
+				switch want {
+				case "org_id":
+					return m.OrgId
+				case "server_id":
+					return m.ServerId
+				case "name":
+					return m.Name
+				case "type":
+					return m.Type
+				default:
+					return ""
+				}
+			})
+		}
+		return ""
+	})
 	policy.MapMethodTo("/chef.automate.api.infra_proxy.InfraProxy/GetNode", "infra:infraServers:{server_id}:orgs:{org_id}:nodes", "infra:infraServers:get", "GET", "/api/v0/infra/servers/{server_id}/orgs/{org_id}/nodes/{name}", func(unexpandedResource string, input interface{}) string {
 		if m, ok := input.(*request.Node); ok {
 			return policy.ExpandParameterizedResource(unexpandedResource, func(want string) string {

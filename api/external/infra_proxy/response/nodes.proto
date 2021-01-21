@@ -68,3 +68,12 @@ message Node {
     // Node override attributes JSON.
     string override_attributes = 11;
 }
+
+message UpdateNodeAttributes {
+    // Node name.
+    string name = 1;
+    // Node attribute type.
+    string type = 2;
+    // Node attributes JSON.
+    string attributes = 3;
+}

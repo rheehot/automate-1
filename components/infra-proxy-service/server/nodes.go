@@ -144,7 +144,7 @@ func (s *Server) DeleteNode(ctx context.Context, req *request.DeleteNode) (*resp
 	}, nil
 }
 
-// UpdateNode update the node attributes
+// UpdateNode update the node
 func (s *Server) UpdateNode(ctx context.Context, req *request.UpdateNode) (*response.UpdateNode, error) {
 	c, err := s.createClient(ctx, req.OrgId, req.ServerId)
 	if err != nil {
@@ -188,6 +188,70 @@ func (s *Server) UpdateNode(ctx context.Context, req *request.UpdateNode) (*resp
 
 	return &response.UpdateNode{
 		Name: req.Name,
+	}, nil
+}
+
+// UpdateNodeAttributes update the node attributes
+func (s *Server) UpdateNodeAttributes(ctx context.Context, req *request.UpdateNodeAttributes) (*response.UpdateNodeAttributes, error) {
+	err := validation.New(validation.Options{
+		Target:  "node",
+		Request: *req,
+		Rules: validation.Rules{
+			"OrgId":    []string{"required"},
+			"ServerId": []string{"required"},
+			"Name":     []string{"required"},
+			"Type":     []string{"required"},
+		},
+	}).Validate()
+
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := s.createClient(ctx, req.OrgId, req.ServerId)
+	if err != nil {
+		return nil, err
+	}
+
+	attributes, err := StructToJSON(req.Attributes)
+	if err != nil {
+		return nil, err
+	}
+
+	chefNode, err := c.client.Nodes.Get(req.Name)
+	switch req.Type {
+	case "normal":
+		chefNode.NormalAttributes = attributes.(map[string]interface{})
+	case "default":
+		chefNode.DefaultAttributes = attributes.(map[string]interface{})
+	default:
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid node attributes type: %s", req.Type)
+	}
+
+	res, err := c.client.Nodes.Put(chefNode)
+	if err != nil {
+		return nil, err
+	}
+
+	var resAttributes []byte
+
+	switch req.Type {
+	case "normal":
+		resAttributes, err = json.Marshal(res.NormalAttributes)
+	case "default":
+		resAttributes, err = json.Marshal(res.DefaultAttributes)
+	default:
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid node attributes type: %s", req.Type)
+	}
+
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &response.UpdateNodeAttributes{
+		Name:       req.Name,
+		Type:       req.Type,
+		Attributes: string(resAttributes),
 	}, nil
 }
 
