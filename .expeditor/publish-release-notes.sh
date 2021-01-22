@@ -45,6 +45,7 @@ This release uses:
 - Chef InSpec version
 
 View the [package manifest](https://packages.chef.io/manifests/current/automate/latest.json) for the latest release.
+
 EOH
 
   # Push changes back up to GitHub
