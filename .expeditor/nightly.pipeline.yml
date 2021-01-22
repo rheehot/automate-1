@@ -236,17 +236,19 @@ steps:
   - label: ":semgrep: Semgrep"
     command:
       - export SEMGREP_BRANCH=$BUILDKITE_BRANCH
-      - export SEMGREP_REPO_NAME=chef/automate
+      # This is actually a fictitious repo name for the nightly run to allow attaching
+      # a different semgrep policy to the run.
+      # The Chef-nightly policy (https://semgrep.dev/manage/policy/chef-nightly)
+      # excludes a few rules from the main policy to produce less noisy output,
+      # ignoring legacy issues that are of no consequence and do not need to be addressed.
+      - export SEMGREP_REPO_NAME=chef/automate-nightly
       # Activates links to buildkite builds in slack notification
       - export SEMGREP_JOB_URL=$BUILDKITE_BUILD_URL
       # Activates links to git commits in slack notification
-      # (Well, it would, but this is actually a fictitious repo name so that I could attach
-      # a different semgrep policy to the run.
-      # The Chef-nightly policy excludes a few rules from the main policy to produce less noisy output,
-      # ignoring legacy issues that are of no consequence and do not need to be addressed.)
-      - export SEMGREP_REPO_URL=https://github.com/chef/automate-nightly
+      - export SEMGREP_REPO_URL=https://github.com/chef/automate
       - python -m semgrep_agent --publish-token "\$SEMGREP_TOKEN" --publish-deployment \$SEMGREP_ID
-    timeout_in_minutes: 15
+    timeout_in_minutes: 20
+    soft_fail: true
     expeditor:
       secrets: true
     plugins:
