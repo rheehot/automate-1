@@ -375,6 +375,21 @@ func init() {
 					return m.OrgId
 				case "server_id":
 					return m.ServerId
+				default:
+					return ""
+				}
+			})
+		}
+		return ""
+	})
+	policy.MapMethodTo("/chef.automate.api.infra_proxy.InfraProxy/GetDataBagItems", "infra:infraServers:{server_id}:orgs:{org_id}:data_bags", "infra:infraServers:get", "GET", "/api/v0/infra/servers/{server_id}/orgs/{org_id}/data_bags/{name}", func(unexpandedResource string, input interface{}) string {
+		if m, ok := input.(*request.DataBagItems); ok {
+			return policy.ExpandParameterizedResource(unexpandedResource, func(want string) string {
+				switch want {
+				case "org_id":
+					return m.OrgId
+				case "server_id":
+					return m.ServerId
 				case "name":
 					return m.Name
 				default:
@@ -385,7 +400,7 @@ func init() {
 		return ""
 	})
 	policy.MapMethodTo("/chef.automate.api.infra_proxy.InfraProxy/GetDataBagItem", "infra:infraServers:{server_id}:orgs:{org_id}:data_bags", "infra:infraServers:get", "GET", "/api/v0/infra/servers/{server_id}/orgs/{org_id}/data_bags/{name}/{item}", func(unexpandedResource string, input interface{}) string {
-		if m, ok := input.(*request.DataBag); ok {
+		if m, ok := input.(*request.DataBagItem); ok {
 			return policy.ExpandParameterizedResource(unexpandedResource, func(want string) string {
 				switch want {
 				case "org_id":
@@ -439,6 +454,23 @@ func init() {
 	})
 	policy.MapMethodTo("/chef.automate.api.infra_proxy.InfraProxy/DeleteDataBag", "infra:infraServers:{server_id}:orgs:{org_id}:data_bags", "infra:infraServers:update", "DELETE", "/api/v0/infra/servers/{server_id}/orgs/{org_id}/data_bags/{name}", func(unexpandedResource string, input interface{}) string {
 		if m, ok := input.(*request.DataBag); ok {
+			return policy.ExpandParameterizedResource(unexpandedResource, func(want string) string {
+				switch want {
+				case "org_id":
+					return m.OrgId
+				case "server_id":
+					return m.ServerId
+				case "name":
+					return m.Name
+				default:
+					return ""
+				}
+			})
+		}
+		return ""
+	})
+	policy.MapMethodTo("/chef.automate.api.infra_proxy.InfraProxy/DeleteDataBagItem", "infra:infraServers:{server_id}:orgs:{org_id}:data_bags", "infra:infraServers:update", "DELETE", "/api/v0/infra/servers/{server_id}/orgs/{org_id}/data_bags/{name}/{item}", func(unexpandedResource string, input interface{}) string {
+		if m, ok := input.(*request.DataBagItem); ok {
 			return policy.ExpandParameterizedResource(unexpandedResource, func(want string) string {
 				switch want {
 				case "org_id":
